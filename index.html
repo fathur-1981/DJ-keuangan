@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DJ Homestay - Data Tamu</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h1, h2 { text-align: center; }
+    table, th, td { border: 1px solid #aaa; border-collapse: collapse; }
+    th, td { padding: 8px; text-align: center; }
+    input, select, button { margin: 5px; padding: 6px; }
+    .form-group { margin-bottom: 10px; }
+    .form-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  </style>
+</head>
+<body>
+  <h1>DJ Homestay - Data Tamu</h1>
+  <div class="form-row">
+    <div class="form-group">
+      <label>Nama Customer:</label><br>
+      <input type="text" id="nama">
+    </div>
+    <div class="form-group">
+      <label>Tanggal Check-in:</label><br>
+      <input type="date" id="checkin">
+    </div>
+    <div class="form-group">
+      <label>Tanggal Check-out:</label><br>
+      <input type="date" id="checkout">
+    </div>
+    <div class="form-group">
+      <label>No Kamar:</label><br>
+      <select id="kamar" onchange="updateHarga()">
+        <option value="">Pilih</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="7">7</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12">12</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Biaya per Malam (Rp):</label><br>
+      <input type="text" id="harga" readonly>
+    </div>
+    <div class="form-group">
+      <label>Total Biaya (Rp):</label><br>
+      <input type="text" id="total" readonly>
+    </div>
+    <div class="form-group">
+      <label>Keterangan:</label><br>
+      <input type="text" id="keterangan">
+    </div>
+  </div>
+  <div style="text-align:center;">
+    <button onclick="simpanData()">Simpan</button>
+  </div>
+  
+  <h2>Data Tamu</h2>
+  <table id="dataTamu">
+    <thead>
+      <tr>
+        <th>No</th>
+        <th>Nama</th>
+        <th>Check-in</th>
+        <th>Check-out</th>
+        <th>Kamar</th>
+        <th>Biaya</th>
+        <th>Keterangan</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    let data = JSON.parse(localStorage.getItem('dataTamu')) || [];
+
+    function simpanKeLocalStorage() {
+      localStorage.setItem('dataTamu', JSON.stringify(data));
+    }
+
+    function updateHarga() {
+      const kamar = document.getElementById('kamar').value;
+      let harga = 0;
+      if (["1", "3", "4", "5", "7"].includes(kamar))
+        harga = 125000;
+      else if (["2", "9", "10", "11"].includes(kamar))
+        harga = 150000;
+      else if (kamar === "12")
+        harga = 180000;
+      document.getElementById('harga').value = harga;
+      hitungTotal();
+    }
+
+    function hitungTotal() {
+      const harga = parseInt(document.getElementById('harga').value || 0);
+      const checkin = new Date(document.getElementById('checkin').value);
+      const checkout = new Date(document.getElementById('checkout').value);
+      const hari = (checkout - checkin) / (1000 * 60 * 60 * 24);
+      const total = hari > 0 ? harga * hari : 0;
+      document.getElementById('total').value = total;
+    }
+
+    document.getElementById('checkin').addEventListener('change', hitungTotal);
+    document.getElementById('checkout').addEventListener('change', hitungTotal);
+
+    function simpanData() {
+      const nama = document.getElementById('nama').value;
+      const checkin = document.getElementById('checkin').value;
+      const checkout = document.getElementById('checkout').value;
+      const kamar = document.getElementById('kamar').value;
+      const biaya = document.getElementById('total').value;
+      const ket = document.getElementById('keterangan').value;
+      if (!nama || !checkin || !checkout || !kamar) {
+        return alert('Lengkapi data terlebih dahulu');
+      }
+      data.push({ nama, checkin, checkout, kamar, biaya, ket });
+      simpanKeLocalStorage();
+      renderTabel();
+      bersih();
+    }
+
+    function renderTabel() {
+      const tbody = document.querySelector('#dataTamu tbody');
+      tbody.innerHTML = '';
+      data.forEach((d, i) => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${d.nama}</td>
+            <td>${d.checkin}</td>
+            <td>${d.checkout}</td>
+            <td>${d.kamar}</td>
+            <td>Rp ${Number(d.biaya).toLocaleString()}</td>
+            <td>${d.ket}</td>
+            <td><button onclick="hapusData(${i})">Hapus</button></td>
+          </tr>`;
+      });
+    }
+
+    function hapusData(i) {
+      if (confirm('Yakin hapus data ini?')) {
+        data.splice(i, 1);
+        simpanKeLocalStorage();
+        renderTabel();
+      }
+    }
+
+    function bersih() {
+      document.getElementById('nama').value = '';
+      document.getElementById('checkin').value = '';
+      document.getElementById('checkout').value = '';
+      document.getElementById('kamar').value = '';
+      document.getElementById('harga').value = '';
+      document.getElementById('total').value = '';
+      document.getElementById('keterangan').value = '';
+    }
+
+    document.addEventListener('DOMContentLoaded', renderTabel);
+  </script>
+</body>
+</html>
