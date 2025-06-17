@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buku Tamu DJ Homestay</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #2ecc71, #27ae60);
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 10px;
+    }
+    h1 {
+      color: #f1c40f;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: rgba(255, 255, 255, 0.2);
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #fff;
+    }
+    th {
+      background-color: #f1c40f;
+      color: black;
+    }
+    button {
+      background-color: #f1c40f;
+      color: #000;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+    }
+    button:hover {
+      background-color: #e67e22;
+    }
+    input[type="number"] {
+      width: 100px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Buku Tamu DJ Homestay</h1>
+    <table id="dataTamu">
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Nama Tamu</th>
+          <th>Kota Asal</th>
+          <th>Tgl Check-in</th>
+          <th>Jam Check-in</th>
+          <th>Tgl Check-out</th>
+          <th>Jam Check-out</th>
+          <th>Total Waktu</th>
+          <th>Harga Kamar</th>
+          <th>Biaya Tambahan</th>
+          <th>Total Biaya</th>
+          <th>Keterangan</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button onclick="tambahBaris()">+ Tambah Tamu</button>
+    <button onclick="exportToExcel()">Export ke Excel</button>
+    <h3 id="grandTotal">Total Seluruh Tamu: Rp 0</h3>
+  </div>
+  <script>
+    let idUrut = 0;
+
+    function rupiah(angka) {
+      return "Rp " + angka.toLocaleString("id-ID");
+    }
+
+    function tambahBaris(data = {}) {
+      const tbody = document.querySelector("#dataTamu tbody");
+      const row = document.createElement("tr");
+      idUrut++;
+      row.innerHTML = `
+        <td>${idUrut}</td>
+        <td><input type="text" value="${data.nama || ''}"/></td>
+        <td><input type="text" value="${data.kota || ''}"/></td>
+        <td><input type="date" value="${data.tglCheckin || ''}"/></td>
+        <td><input type="time" value="${data.jamCheckin || ''}"/></td>
+        <td><input type="date" value="${data.tglCheckout || ''}"/></td>
+        <td><input type="time" value="${data.jamCheckout || ''}"/></td>
+        <td class="durasiInap">0 malam 0 jam</td>
+        <td><input type="number" class="harga" value="${data.harga || 500000}"/></td>
+        <td><input type="number" class="tambahan" value="${data.tambahan || 0}"/></td>
+        <td class="totalBayar">0</td>
+        <td><input type="text" value="${data.ket || ''}"/></td>
+        <td>
+          <button onclick="hitungBaris(this)">Hitung</button>
+          <button onclick="hapusBaris(this)">Hapus</button>
+        </td>
+      `;
+      tbody.appendChild(row);
+      row.querySelectorAll("input").forEach(input => input.addEventListener("change", () => hitungBaris(row.querySelector("button"))));
+      hitungBaris(row.querySelector("button"));
+      simpanLocalStorage();
+    }
+
+    function hitungBaris(btn) {
+      const row = btn.closest("tr");
+      const checkin = new Date(row.cells[3].querySelector("input").value + "T" + row.cells[4].querySelector("input").value);
+      const checkout = new Date(row.cells[5].querySelector("input").value + "T" + row.cells[6].querySelector("input").value);
+      const harga = parseInt(row.querySelector(".harga").value) || 0;
+      const tambahan = parseInt(row.querySelector(".tambahan").value) || 0;
+      let total = 0;
+      let durasi = "-";
+      if (checkout > checkin) {
+        const selisihMs = checkout - checkin;
+        const totalJam = Math.floor(selisihMs / (1000 * 60 * 60));
+        const totalHari = Math.floor(totalJam / 24);
+        const sisaJam = totalJam % 24;
+        durasi = `${totalHari} malam ${sisaJam} jam`;
+        total = (harga * (totalHari + (sisaJam > 0 ? 1 : 0))) + tambahan;
+      }
+      row.querySelector(".durasiInap").innerText = durasi;
+      row.querySelector(".totalBayar").innerText = rupiah(total);
+      hitungTotalSemua();
+      simpanLocalStorage();
+    }
+
+    function hapusBaris(btn) {
+      btn.closest("tr").remove();
+      updateNomor();
+      hitungTotalSemua();
+      simpanLocalStorage();
+    }
+
+    function updateNomor() {
+      const rows = document.querySelectorAll("#dataTamu tbody tr");
+      rows.forEach((row, idx) => row.cells[0].innerText = idx + 1);
+      idUrut = rows.length;
+    }
+
+    function hitungTotalSemua() {
+      let total = 0;
+      document.querySelectorAll(".totalBayar").forEach(td => {
+        total += parseInt(td.innerText.replace(/[^\d]/g, "")) || 0;
+      });
+      document.getElementById("grandTotal").innerText = "Total Seluruh Tamu: " + rupiah(total);
+    }
+
+    function exportToExcel() {
+      const rows = document.querySelectorAll("#dataTamu tr");
+      const data = Array.from(rows).map(row =>
+        Array.from(row.cells).slice(0, -1).map(cell => cell.querySelector("input")?.value || cell.innerText.trim()).join(",")
+      );
+      const csv = "data:text/csv;charset=utf-8," + data.join("\n");
+      const link = document.createElement("a");
+      link.setAttribute("href", encodeURI(csv));
+      link.setAttribute("download", "data_tamu.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function simpanLocalStorage() {
+      const rows = document.querySelectorAll("#dataTamu tbody tr");
+      const data = Array.from(rows).map(row => ({
+        nama: row.cells[1].querySelector("input").value,
+        kota: row.cells[2].querySelector("input").value,
+        tglCheckin: row.cells[3].querySelector("input").value,
+        jamCheckin: row.cells[4].querySelector("input").value,
+        tglCheckout: row.cells[5].querySelector("input").value,
+        jamCheckout: row.cells[6].querySelector("input").value,
+        harga: row.cells[8].querySelector("input").value,
+        tambahan: row.cells[9].querySelector("input").value,
+        ket: row.cells[11].querySelector("input").value,
+      }));
+      localStorage.setItem("dataTamu", JSON.stringify(data));
+    }
+
+    function muatDariLocalStorage() {
+      const data = JSON.parse(localStorage.getItem("dataTamu")) || [];
+      data.forEach(baris => tambahBaris(baris));
+    }
+
+    window.onload = muatDariLocalStorage;
+  </script>
+</body>
+</html>
